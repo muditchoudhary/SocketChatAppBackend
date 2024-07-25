@@ -58,7 +58,7 @@ export async function getSingleConversation(req, res) {
         { senderId, receiverId },
         { senderId: receiverId, receiverId: senderId },
       ],
-    });
+    }).sort({ "messages.createdAt": 1 });
     return res.status(200).json({ conversation });
   } catch (error) {
     console.error(error);
@@ -77,7 +77,7 @@ export async function deleteMessageFromConversation(req, res) {
         { senderId: receiverId, receiverId: senderId },
       ],
     });
-    await ConversationModel.findByIdAndUpdate(
+    const updatedConversation = await ConversationModel.findByIdAndUpdate(
       conversation._id,
       {
         $pull: {
