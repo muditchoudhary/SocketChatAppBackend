@@ -7,7 +7,7 @@ import { dirname, join } from "node:path";
 import { Server } from "socket.io";
 
 import connectToDB from "./db/dbConfig.js";
-import MessageModel from "./models/Message.model.js";
+import UserRoutes from "./routes/user.routes.js";
 import UserModel from "./models/User.model.js";
 import ConversationModel from "./models/Conversation.model.js";
 import conversationRotues from "./routes/conversation.routes.js";
@@ -22,9 +22,51 @@ app.use(express.urlencoded({ extended: false }));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+app.use("/user", UserRoutes);
+
 app.get("/", (req, res) => {
   res.sendFile(join(__dirname, "index.html"));
 });
+
+// app.post("/user/login", async (req, res) => {
+//   try {
+//     const userName = req.body.userName;
+//     const password = req.body.password;
+//     if (!userName || !password) {
+//       return res.status(400).json({
+//         message: "Missing required fields",
+//       });
+//     }
+
+//     const user = await UserModel.findOne({
+//       userName,
+//     });
+
+//     if (!user) {
+//       let newUser = new UserModel({
+//         userName: userName,
+//         password: password,
+//       });
+//       let result = await newUser.save();
+//       console.log(result);
+
+//       if (result) {
+//         res.status(400).json({
+//           message: "Missing required fields",
+//         });
+//       }
+//     } else {
+//       res.status(200).json({
+//         message: "Log in successfull",
+//       });
+//     }
+//   } catch (error) {
+//     console.error(error);
+//     return res.status(500).json({
+//       message: "Internal Server Error",
+//     });
+//   }
+// });
 
 io.on("connection", async (socket) => {
   socket.on("chat message", async (msg, senderId, receiverId) => {
