@@ -1,8 +1,9 @@
-import ConversationModel from "../models/Conversation.model";
+import ConversationModel from "../models/Conversation.model.js";
 
 export async function addConversationMessage(req, res) {
   try {
-    const { senderId, receiverId, author, content } = req.body;
+    const { senderId, receiverId, content } = req.body;
+    console.log(senderId, receiverId, content);
     const conversationExist = await ConversationModel.findOne({
       $or: [
         { senderId, receiverId },
@@ -16,8 +17,9 @@ export async function addConversationMessage(req, res) {
           $push: {
             messages: {
               author_id: senderId,
-              author: author,
               content: content,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
             },
           },
         },
@@ -32,8 +34,9 @@ export async function addConversationMessage(req, res) {
         messages: [
           {
             author_id: senderId,
-            author: author,
             content,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
           },
         ],
       });
@@ -56,7 +59,7 @@ export async function getSingleConversation(req, res) {
         { senderId: receiverId, receiverId: senderId },
       ],
     });
-    return res.status(200).json({ updatedConversation });
+    return res.status(200).json({ conversation });
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -94,15 +97,6 @@ export async function deleteMessageFromConversation(req, res) {
   }
 }
 
-let doctorResult = await DoctorModel.updateOne(
-  { _id: doctor._id, "appointments.commonId": commonId },
-  {
-    $set: {
-      "appointments.$.appointmentAt": appointmentAt,
-      "appointments.$.appointmentOn": appointmentOn,
-    },
-  }
-);
 export async function editMessageFromConversation(req, res) {
   try {
     const { senderId, receiverId, messageId, content } = req.body;
@@ -112,13 +106,12 @@ export async function editMessageFromConversation(req, res) {
         { senderId: receiverId, receiverId: senderId },
       ],
     });
-    await ConversationModel.updateOne(
+    const updatedConversation = await ConversationModel.findOneAndUpdate(
       { _id: conversation._id, "messages._id": messageId },
       {
         $set: {
-          "messages.$.content": {
-            content,
-          },
+          "messages.$.content": content,
+          "messages.$.updatedAt": Date.now(),
         },
       },
       { new: true }

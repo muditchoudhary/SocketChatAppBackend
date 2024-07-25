@@ -7,10 +7,9 @@ import { dirname, join } from "node:path";
 import { Server } from "socket.io";
 
 import connectToDB from "./db/dbConfig.js";
-import MessageModel from "./models/Message.model.js";
-import UserModel from "./models/User.model.js";
-import ConversationModel from "./models/Conversation.model.js";
-import conversationRotues from "./routes/conversation.routes.js";
+
+import conversationRoutes from "./routes/conversation.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
 const app = express();
 const server = createServer(app);
@@ -22,74 +21,56 @@ app.use(express.urlencoded({ extended: false }));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+app.get("/test", (req, res) => res.status(200).json({ message: "his" }));
+app.use("/conversation", conversationRoutes);
+app.use("/user", userRoutes);
 app.get("/", (req, res) => {
   res.sendFile(join(__dirname, "index.html"));
 });
 
+// socket.io logic
+let users = [];
+// [
+//   {userId: 'abce', socketId}
+// ]
+
+const addUser = (userId, socketId) => {
+  // If not any one user found with the given id then only
+  // add user to the users
+  !users.some((user) => user.userId === userId) &&
+    users.push({ userId, socketId });
+};
+
+const removeUser = (socketId) => {
+  users = users.filter((user) => user.socketId !== socketId);
+};
+
+const getUser = (userId) => {
+  return users.find((user) => user.userId === userId);
+};
+
 io.on("connection", async (socket) => {
-  socket.on("chat message", async (msg, senderId, receiverId) => {
-    let result;
-    try {
-      let result = await ConversationModel.create({
-        participants: [senderId, receiverId],
-      });
-      await MessageModel.create({
-        sender: senderId,
-        content: msg,
-        converstationId: result._id,
-      });
-    } catch (e) {
-      // TODO handle the failure
-      return;
-    }
-    // include the offset with the message
-    io.emit("chat message", msg);
+  socket.on("addUser", (userId) => {
+    addUser(userId, socket.id);
+    io.emit("getUsers", users);
   });
 
-  // if (!socket.recovered) {
-  //   // if the connection state recovery was not successful
-  //   try {
-  //     const serverOffset = socket.handshake.auth.serverOffset || 0;
-  //     const cursor = MessageModel.find({
-  //       unique_id: { $gt: serverOffset },
-  //     }).sort({
-  //       unique_id: 1,
-  //     });
-  //     await cursor.forEach((msg) => {
-  //       socket.emit("chat message", msg.content, msg.unique_id);
-  //     });
-  //     await db.each(
-  //       "SELECT id, content FROM messages WHERE id > ?",
-  //       [socket.handshake.auth.serverOffset || 0],
-  //       (_err, row) => {
-  //         socket.emit("chat message", row.content, row.id);
-  //       }
-  //     );
-  //   } catch (e) {
-  //     // something went wrong
-  //     console.error(e);
-  //   }
-  // }
+  socket.on("sendMessage", ({ receiverPerson, newMessage }) => {
+    const receiverId = receiverPerson._id;
+    // getting the user because we need to know it's socket id
+    const user = getUser(receiverId);
+    if (user) {
+      io.to(user.socketId).emit("getMessage", { newMessage });
+    }
+  });
 
   socket.on("disconnect", () => {
     console.log("user disconnected");
   });
 });
 
-app.post("/user/register", async (req, res) => {
-  await UserModel.create({
-    userName: req.body.userName,
-    password: req.body.password,
-  });
-  return res.status(200).json({
-    message: "usre registered",
-  });
-});
-
-app.use("/conversation", conversationRotues);
-
-server.listen(3000, async () => {
+server.listen(5000, async () => {
   await connectToDB();
 
-  console.log("server running at http://localhost:3000");
+  console.log("server running at http://localhost:5000");
 });

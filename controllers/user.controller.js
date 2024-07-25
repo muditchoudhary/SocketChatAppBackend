@@ -1,6 +1,6 @@
 import UserModel from "../models/User.model.js";
 
-export async function login() {
+export async function login(req, res) {
   try {
     const userName = req.body.userName;
     const password = req.body.password;
@@ -20,16 +20,19 @@ export async function login() {
         password: password,
       });
       let result = await newUser.save();
-      console.log(result);
+      console.log("result is: ", result);
 
       if (result) {
-        res.status(400).json({
-          message: "Missing required fields",
+        return res.status(200).json({
+          message: "User Registered",
+          result,
         });
       }
     } else {
-      res.status(200).json({
+      console.log("user is: ", user);
+      return res.status(200).json({
         message: "Log in successfull",
+        user,
       });
     }
   } catch (error) {
