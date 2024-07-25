@@ -20,16 +20,21 @@ export async function login(req, res) {
         password: password,
       });
       let result = await newUser.save();
-      console.log(result);
+      console.log("result is: ", result);
 
       if (result) {
+<<<<<<< HEAD
         res.status(400).json({
+=======
+        return res.status(200).json({
+>>>>>>> origin/mudit
           message: "User Registered",
           result,
         });
       }
     } else {
-      res.status(200).json({
+      console.log("user is: ", user);
+      return res.status(200).json({
         message: "Log in successfull",
         user,
       });
