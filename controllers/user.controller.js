@@ -2,45 +2,49 @@ import UserModel from "../models/User.model.js";
 
 export async function login(req, res) {
   try {
-    const userName = req.body.userName;
-    const password = req.body.password;
+    const { userName, password } = req.body;
+
     if (!userName || !password) {
       return res.status(400).json({
         message: "Missing required fields",
       });
     }
 
-    const user = await UserModel.findOne({
-      userName,
-    });
+    const user = await UserModel.findOne({ userName });
 
     if (!user) {
-      let newUser = new UserModel({
-        userName: userName,
-        password: password,
-      });
-      let result = await newUser.save();
-      console.log("result is: ", result);
+      // Register new user if not found
+      const newUser = new UserModel({ userName, password });
+      const result = await newUser.save();
 
       if (result) {
-<<<<<<< HEAD
-        res.status(400).json({
-=======
         return res.status(200).json({
->>>>>>> origin/mudit
           message: "User Registered",
-          result,
+          result: {
+            userName: result.userName,
+            id: result._id,
+          },
         });
       }
     } else {
-      console.log("user is: ", user);
+      // Check if the password is correct
+      if (user.password !== password) {
+        return res.status(401).json({
+          message: "Incorrect password",
+        });
+      }
+
+      // Log in successful
       return res.status(200).json({
-        message: "Log in successfull",
-        user,
+        message: "Log in successful",
+        user: {
+          userName: user.userName,
+          id: user._id,
+        },
       });
     }
   } catch (error) {
-    console.error(error);
+    console.error("Error during login process:", error);
     return res.status(500).json({
       message: "Internal Server Error",
     });
