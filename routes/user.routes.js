@@ -1,4 +1,5 @@
 import express from "express";
+import { authorization } from "../config/authorization.js";
 import {
   login,
   getUser,
@@ -8,7 +9,7 @@ import {
 const router = express.Router();
 
 router.post("/login", login);
-router.get("/getUser", getUser);
-router.get("/singleUser/:id", getSingleUser);
+router.get("/getUser", authorization, getUser);
+router.get("/singleUser/:id", authorization, getSingleUser);
 
 export default router;

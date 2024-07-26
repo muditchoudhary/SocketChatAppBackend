@@ -1,4 +1,5 @@
 import UserModel from "../models/User.model.js";
+import { issueJWT } from "../config/jwtUtil.js";
 
 export async function login(req, res) {
   try {
@@ -15,14 +16,14 @@ export async function login(req, res) {
     if (!user) {
       // Register new user if not found
       const newUser = new UserModel({ userName, password });
-      const result = await newUser.save();
+      let user = await newUser.save();
 
-      if (result) {
+      if (user) {
         return res.status(200).json({
           message: "User Registered",
-          result: {
-            userName: result.userName,
-            id: result._id,
+          user: {
+            userName: user.userName,
+            id: user._id,
           },
         });
       }
@@ -34,9 +35,11 @@ export async function login(req, res) {
         });
       }
 
-      // Log in successful
+      const tokenObject = issueJWT(user);
       return res.status(200).json({
         message: "Log in successful",
+        token: tokenObject.token,
+        expiresIn: tokenObject.expires,
         user: {
           userName: user.userName,
           id: user._id,
