@@ -21,9 +21,9 @@ app.use(express.urlencoded({ extended: false }));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-app.get("/test", (req, res) => res.status(200).json({ message: "his" }));
-app.use("/conversation", conversationRoutes);
 app.use("/user", userRoutes);
+app.use("/conversation", conversationRoutes);
+
 app.get("/", (req, res) => {
   res.sendFile(join(__dirname, "index.html"));
 });
@@ -69,8 +69,8 @@ io.on("connection", async (socket) => {
   });
 });
 
-server.listen(5000, async () => {
+server.listen(3000, async () => {
   await connectToDB();
 
-  console.log("server running at http://localhost:5000");
+  console.log("server running at http://localhost:3000");
 });
