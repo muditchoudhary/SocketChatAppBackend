@@ -1,9 +1,26 @@
 import ConversationModel from "../models/Conversation.model.js";
 
+export async function initConversation(req, res) {
+  try {
+    const { senderId, receiverId } = req.body;
+
+    const newConversation = await ConversationModel.create({
+      senderId,
+      receiverId,
+      messages: [],
+    });
+    return res.status(200).json({ newConversation });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      message: "Internal Server Error",
+    });
+  }
+}
+
 export async function addConversationMessage(req, res) {
   try {
     const { senderId, receiverId, content } = req.body;
-    console.log(senderId, receiverId, content);
     const conversationExist = await ConversationModel.findOne({
       $or: [
         { senderId, receiverId },
@@ -25,7 +42,9 @@ export async function addConversationMessage(req, res) {
         },
         { new: true }
       );
-      return res.status(200).json({ updatedConversation });
+      const latestMessageObj =
+        updatedConversation.messages[updatedConversation.messages.length - 1];
+      return res.status(200).json({ message: latestMessageObj });
     }
     if (!conversationExist) {
       const newConversation = await ConversationModel.create({
@@ -52,7 +71,7 @@ export async function addConversationMessage(req, res) {
 
 export async function getSingleConversation(req, res) {
   try {
-    const { senderId, receiverId } = req.body;
+    const { senderId, receiverId } = req.query;
     const conversation = await ConversationModel.findOne({
       $or: [
         { senderId, receiverId },
@@ -88,7 +107,7 @@ export async function deleteMessageFromConversation(req, res) {
       },
       { new: true }
     );
-    return res.status(200).json({ updatedConversation });
+    return res.status(200).json({ messages: updatedConversation.messages });
   } catch (error) {
     console.error(error);
     res.status(500).json({
@@ -116,7 +135,7 @@ export async function editMessageFromConversation(req, res) {
       },
       { new: true }
     );
-    return res.status(200).json({ updatedConversation });
+    return res.status(200).json({ messages: updatedConversation.messages });
   } catch (error) {
     console.error(error);
     res.status(500).json({
