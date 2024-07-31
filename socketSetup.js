@@ -1,6 +1,18 @@
+import UserModel from "./models/User.model.js";
 export function initSocket(io) {
-  // socket.io logic
+  async function checkBlockedUser(senderId, receiverId, next) {
+    try {
+      const receiver = await UserModel.findById(receiverId);
+      if (receiver.blockedUsers.includes(senderId)) {
+        return next(new Error("User is blocked and cannot send messages."));
+      }
+      next();
+    } catch (error) {
+      next(error);
+    }
+  }
 
+  // socket.io logic
   let users = new Map();
   const addUser = (userId, socketId, userName) => {
     // If not any one user found with the given id then only
@@ -60,25 +72,38 @@ export function initSocket(io) {
 
     socket.on(
       "sendMessage",
-      (senderId, receiverId, message, conversationId) => {
-        console.log("Total active users are: ", users);
-        const receiverUsers = getAllRecieverUser(receiverId);
-        const selfUsers = getAllSelf(senderId);
-        console.log("reciveUsers are: ", receiverUsers);
-        console.log("self users are: ", selfUsers);
-        if (receiverUsers) {
-          for (const receiver of receiverUsers) {
-            const receiverUserSocketId = receiver.socketId;
-            console.log(`emitting event to: ${receiverUserSocketId}`);
-            io.to(receiverUserSocketId).emit(
-              "getMessage",
-              message,
-              conversationId
-            );
-          }
-        }
-        for (const self of selfUsers) {
-          io.to(self.socketId).emit("getMessage", message, conversationId);
+      async (senderId, receiverId, message, conversationId) => {
+        try {
+          // Middleware logic to check if the sender is blocked by the receiver
+          await checkBlockedUser(senderId, receiverId, (err) => {
+            if (err) {
+              console.log(err.message);
+              socket.emit("error", err.message);
+              return;
+            }
+
+            console.log("Total active users are: ", users);
+            const receiverUsers = getAllRecieverUser(receiverId);
+            const selfUsers = getAllSelf(senderId);
+            console.log("reciveUsers are: ", receiverUsers);
+            console.log("self users are: ", selfUsers);
+            if (receiverUsers) {
+              for (const receiver of receiverUsers) {
+                const receiverUserSocketId = receiver.socketId;
+                console.log(`emitting event to: ${receiverUserSocketId}`);
+                io.to(receiverUserSocketId).emit(
+                  "getMessage",
+                  message,
+                  conversationId
+                );
+              }
+            }
+            for (const self of selfUsers) {
+              io.to(self.socketId).emit("getMessage", message, conversationId);
+            }
+          });
+        } catch (error) {
+          console.error("Error processing sendMessage event: ", error);
         }
       }
     );
