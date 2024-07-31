@@ -48,7 +48,15 @@ export function initSocket(io) {
 
   const getOnlineUsers = () => {
     // T: O(n)
+    /*onlineUsers = {
+      'UserId[66a4d496a633c8dc217c6916]': {
+        userId: ,
+        sockedId: ,
+        userName: ,
+      }
+    }*/
     let onlineUsers = {};
+
     for (let [key, value] of users) {
       const userOjb = value;
       onlineUsers[userOjb.userId] = userOjb;
@@ -57,11 +65,8 @@ export function initSocket(io) {
   };
 
   io.on("connection", (socket) => {
-    console.log("new user connected, socket id: ", socket.id);
-    console.log("existing users are: ", users);
     socket.on("addUser", (socketId, userId, userName) => {
-      addUser(userId, socketId, userName);
-      console.log("total users after adding a user are: ", users);
+      addUser(userId, socket.id, userName);
       const usersObject = getOnlineUsers();
       io.emit("getUsers", usersObject);
     });
@@ -87,6 +92,7 @@ export function initSocket(io) {
             const selfUsers = getAllSelf(senderId);
             console.log("reciveUsers are: ", receiverUsers);
             console.log("self users are: ", selfUsers);
+            // TODO ADD SNED MESSAGE HERE
             if (receiverUsers) {
               for (const receiver of receiverUsers) {
                 const receiverUserSocketId = receiver.socketId;
