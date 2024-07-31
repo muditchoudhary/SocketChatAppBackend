@@ -2,8 +2,6 @@ import express from "express";
 import cors from "cors";
 
 import { createServer } from "node:http";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import { Server } from "socket.io";
 
 import connectToDB from "./db/dbConfig.js";
@@ -26,13 +24,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
 app.use("/user", userRoutes);
 app.use("/conversation", conversationRoutes);
 
 app.get("/", (req, res) => {
-  res.sendFile(join(__dirname, "index.html"));
+  res.send("Hello world! working");
 });
 
 server.listen(3000, async () => {
