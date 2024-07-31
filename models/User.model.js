@@ -10,6 +10,7 @@ const UserSchema = new Schema({
   password: {
     type: String,
   },
+  blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 });
 
 const UserModel = mongoose.model("User", UserSchema);

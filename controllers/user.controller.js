@@ -1,4 +1,39 @@
 import UserModel from "../models/User.model.js";
+import { issueJWT } from "../config/jwtUtil.js";
+
+export async function blockuser(req, res) {
+  try {
+    // Log the request body to check the incoming data
+    console.log(req.body, "Request Body");
+
+    const { userIdToToggle } = req.body;
+
+    const { userId } = req.body;
+    console.log(userId, "userId");
+
+    const user = await UserModel.findById(userId);
+    console.log(user, "found");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (user.blockedUsers.includes(userIdToToggle)) {
+      await UserModel.findByIdAndUpdate(userId, {
+        $pull: { blockedUsers: userIdToToggle },
+      });
+      res.status(200).json({ message: "User unblocked successfully." });
+    } else {
+      await UserModel.findByIdAndUpdate(userId, {
+        $addToSet: { blockedUsers: userIdToToggle },
+      });
+      res.status(200).json({ message: "User blocked successfully." });
+    }
+  } catch (error) {
+    console.error("Error:", error); // More detailed error logging
+    res.status(500).json({ message: "An error occurred.", error });
+  }
+}
 
 export async function login(req, res) {
   try {
@@ -15,14 +50,17 @@ export async function login(req, res) {
     if (!user) {
       // Register new user if not found
       const newUser = new UserModel({ userName, password });
-      const result = await newUser.save();
-
-      if (result) {
+      let user = await newUser.save();
+      const tokenObject = issueJWT(user);
+      if (user) {
         return res.status(200).json({
           message: "User Registered",
-          result: {
-            userName: result.userName,
-            id: result._id,
+          token: tokenObject.token,
+          expiresIn: tokenObject.expires,
+          user: {
+            userName: user.userName,
+            id: user._id,
+            blockedUsers: user.blockedUsers,
           },
         });
       }
@@ -34,12 +72,15 @@ export async function login(req, res) {
         });
       }
 
-      // Log in successful
+      const tokenObject = issueJWT(user);
       return res.status(200).json({
         message: "Log in successful",
+        token: tokenObject.token,
+        expiresIn: tokenObject.expires,
         user: {
           userName: user.userName,
           id: user._id,
+          blockedUsers: user.blockedUsers,
         },
       });
     }
@@ -84,6 +125,7 @@ export async function getSingleUser(req, res) {
         result: {
           userName: result.userName,
           id: result._id,
+          blockedUsers: result.blockedUsers,
         },
       });
   } catch (error) {
