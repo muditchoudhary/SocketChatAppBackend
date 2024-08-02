@@ -1,3 +1,10 @@
+import {
+  addNewMessageToConversation,
+  deleteMessageFromConversation,
+  editMessageFromConversation,
+  getConversationsWithConvId,
+} from "./methods/conversation.methods.js";
+import { fetchAllUsers } from "./methods/users.methods.js";
 import UserModel from "./models/User.model.js";
 export function initSocket(io) {
   async function checkBlockedUser(senderId, receiverId, next) {
@@ -65,10 +72,12 @@ export function initSocket(io) {
   };
 
   io.on("connection", (socket) => {
-    socket.on("addUser", (socketId, userId, userName) => {
+    socket.on("addUser", async (userId, userName) => {
       addUser(userId, socket.id, userName);
       const usersObject = getOnlineUsers();
       io.emit("getUsers", usersObject);
+      const fetchedAllUsers = await fetchAllUsers();
+      io.emit("getAllUsers", { fetchedAllUsers });
     });
 
     socket.on("removeUser", (userId) => {
@@ -77,36 +86,51 @@ export function initSocket(io) {
 
     socket.on(
       "sendMessage",
-      async (senderId, receiverId, message, conversationId) => {
+      async (senderId, receiverId, message, conversationId, callback) => {
         try {
           // Middleware logic to check if the sender is blocked by the receiver
-          await checkBlockedUser(senderId, receiverId, (err) => {
+          await checkBlockedUser(senderId, receiverId, async (err) => {
             if (err) {
               console.log(err.message);
               socket.emit("error", err.message);
               return;
             }
 
-            console.log("Total active users are: ", users);
+            // TODO ADD SNED MESSAGE HERE
+            const updatedConversation = await addNewMessageToConversation({
+              conversationId,
+              senderId,
+              content: message,
+            });
+            const latestMessageObj =
+              updatedConversation.messages[
+                updatedConversation.messages.length - 1
+              ];
             const receiverUsers = getAllRecieverUser(receiverId);
             const selfUsers = getAllSelf(senderId);
-            console.log("reciveUsers are: ", receiverUsers);
-            console.log("self users are: ", selfUsers);
-            // TODO ADD SNED MESSAGE HERE
+
             if (receiverUsers) {
               for (const receiver of receiverUsers) {
                 const receiverUserSocketId = receiver.socketId;
-                console.log(`emitting event to: ${receiverUserSocketId}`);
                 io.to(receiverUserSocketId).emit(
                   "getMessage",
-                  message,
+                  latestMessageObj,
                   conversationId
                 );
               }
             }
             for (const self of selfUsers) {
-              io.to(self.socketId).emit("getMessage", message, conversationId);
+              io.to(self.socketId).emit(
+                "getMessage",
+                latestMessageObj,
+                conversationId
+              );
             }
+            callback({
+              acknowledgement: {
+                success: true,
+              },
+            });
           });
         } catch (error) {
           console.error("Error processing sendMessage event: ", error);
@@ -116,16 +140,39 @@ export function initSocket(io) {
 
     socket.on(
       "updateMessages",
-      (senderId, receiverId, messages, conversationId) => {
+      async (
+        messageId,
+        senderId,
+        receiverId,
+        content,
+        conversationId,
+        updateType
+      ) => {
+        let updatedConversation = {};
+        if (updateType === "deleted") {
+          updatedConversation = await deleteMessageFromConversation({
+            conversationId,
+            messageId,
+          });
+        } else if (updateType === "edited") {
+          updatedConversation = await editMessageFromConversation({
+            conversationId,
+            messageId,
+            content,
+          });
+        }
+
         const receiverUsers = getAllRecieverUser(receiverId);
         const selfUsers = getAllSelf(senderId);
+        let message = updatedConversation.messages;
+
         if (receiverUsers) {
           for (const receiver of receiverUsers) {
             const receiverUserSocketId = receiver.socketId;
             console.log(`emitting event to: ${receiverUserSocketId}`);
             io.to(receiverUserSocketId).emit(
               "getUpdateMessages",
-              messages,
+              message,
               conversationId
             );
           }
@@ -133,10 +180,25 @@ export function initSocket(io) {
         for (const self of selfUsers) {
           io.to(self.socketId).emit(
             "getUpdateMessages",
-            messages,
+            message,
             conversationId
           );
         }
+      }
+    );
+
+    socket.on(
+      "wantConversations",
+      async ({ senderId, receiverId }, callback) => {
+        const conversation = await getConversationsWithConvId({
+          senderId,
+          receiverId,
+        });
+        callback({
+          acknowledgement: {
+            conversation,
+          },
+        });
       }
     );
 

@@ -30,6 +30,14 @@ const conversationSchema = new Schema(
           type: Date,
           default: new Date(),
         },
+        isEdited: {
+          type: Boolean,
+          default: false,
+        },
+        isDeleted: {
+          type: Boolean,
+          default: false,
+        },
       },
     ],
   },

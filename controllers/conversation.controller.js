@@ -1,4 +1,5 @@
 import ConversationModel from "../models/Conversation.model.js";
+import { addNewMessageToConversation } from "../methods/conversation.methods.js";
 
 export async function initConversation(req, res) {
   try {
@@ -28,38 +29,14 @@ export async function addConversationMessage(req, res) {
       ],
     });
     if (conversationExist) {
-      const updatedConversation = await ConversationModel.findByIdAndUpdate(
-        conversationExist._id,
-        {
-          $push: {
-            messages: {
-              author_id: senderId,
-              content: content,
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-            },
-          },
-        },
-        { new: true }
-      );
+      const updatedConversation = await addNewMessageToConversation({
+        conversationId: conversationExist._id,
+        senderId,
+        content,
+      });
       const latestMessageObj =
         updatedConversation.messages[updatedConversation.messages.length - 1];
       return res.status(200).json({ message: latestMessageObj });
-    }
-    if (!conversationExist) {
-      const newConversation = await ConversationModel.create({
-        senderId,
-        receiverId,
-        messages: [
-          {
-            author_id: senderId,
-            content,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          },
-        ],
-      });
-      return res.status(200).json({ newConversation });
     }
   } catch (error) {
     console.error(error);
