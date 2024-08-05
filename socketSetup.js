@@ -85,6 +85,24 @@ export function initSocket(io) {
     });
 
     socket.on(
+      "typing",
+      ({ senderId, receiverId, currentConversationId, isTyping }) => {
+        const receiverUsers = getAllRecieverUser(receiverId);
+        const selfUsers = getAllSelf(senderId);
+
+        if (receiverUsers) {
+          for (const receiver of receiverUsers) {
+            const receiverUserSocketId = receiver.socketId;
+            io.to(receiverUserSocketId).emit("userTyping", {
+              isTyping,
+              givenConversationId: currentConversationId,
+            });
+          }
+        }
+      }
+    );
+
+    socket.on(
       "sendMessage",
       async (senderId, receiverId, message, conversationId, callback) => {
         try {
