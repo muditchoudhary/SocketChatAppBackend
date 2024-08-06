@@ -4,15 +4,13 @@ import { issueJWT } from "../config/jwtUtil.js";
 export async function blockuser(req, res) {
   try {
     // Log the request body to check the incoming data
-    console.log(req.body, "Request Body");
+    console.log(req);
 
     const { userIdToToggle } = req.body;
 
     const { userId } = req.body;
-    console.log(userId, "userId");
 
     const user = await UserModel.findById(userId);
-    console.log(user, "found");
 
     if (!user) {
       return res.status(404).json({ message: "User not found." });
@@ -35,6 +33,44 @@ export async function blockuser(req, res) {
   }
 }
 
+// export async function blockuser(req, res, io) {
+//   try {
+//     const { userIdToToggle } = req.body;
+//     const { userId } = req.body;
+
+//     const user = await UserModel.findById(userId);
+
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found." });
+//     }
+
+//     const isBlocked = user.blockedUsers.includes(userIdToToggle);
+
+//     await UserModel.findByIdAndUpdate(userId, {
+//       $set: {
+//         blockedUsers: isBlocked
+//           ? user.blockedUsers.filter((id) => id !== userIdToToggle)
+//           : [...user.blockedUsers, userIdToToggle],
+//       },
+//     });
+
+//     // Emit socket event to all connected clients
+//     io.emit("userBlockedStatusChanged", {
+//       userId,
+//       userIdToToggle,
+//       isBlocked: !isBlocked, // Invert the flag for clarity
+//     });
+
+//     res.status(200).json({
+//       message: isBlocked
+//         ? "User unblocked successfully."
+//         : "User blocked successfully.",
+//     });
+//   } catch (error) {
+//     console.error("Error:", error);
+//     res.status(500).json({ message: "An error occurred.", error });
+//   }
+// }
 export async function login(req, res) {
   try {
     const { userName, password } = req.body;
@@ -95,7 +131,7 @@ export async function login(req, res) {
 export async function getUser(req, res) {
   try {
     const allUser = await UserModel.find()
-      .select({ _id: 1, userName: 1 })
+      .select({ _id: 1, userName: 1, blockedUsers: 1 })
       .exec();
 
     if (!allUser)

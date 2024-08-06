@@ -6,14 +6,26 @@ import {
 } from "./methods/conversation.methods.js";
 import { fetchAllUsers } from "./methods/users.methods.js";
 import UserModel from "./models/User.model.js";
+import { toggleBlockUser } from "./methods/block.methos.js";
+import { fetchUserBlockList } from "./methods/fetchUserBlockList.methods.js";
+import { getSingleUser } from "./methods/fetchSingleUser.methods.js";
 export function initSocket(io) {
   async function checkBlockedUser(senderId, receiverId, next) {
     try {
       const receiver = await UserModel.findById(receiverId);
+      const sender = await UserModel.findById(senderId);
+
+      if (!receiver || !sender) {
+        return next(new Error("Sender or Receiver not found."));
+      }
+
       if (receiver.blockedUsers.includes(senderId)) {
         return next(new Error("User is blocked and cannot send messages."));
+      } else if (sender.blockedUsers.includes(receiverId)) {
+        return next(new Error("You blocked this user"));
+      } else {
+        next();
       }
-      next();
     } catch (error) {
       next(error);
     }
@@ -78,11 +90,53 @@ export function initSocket(io) {
       io.emit("getUsers", usersObject);
       const fetchedAllUsers = await fetchAllUsers();
       io.emit("getAllUsers", { fetchedAllUsers });
+      const fetchUserBlockArray = await fetchUserBlockList({
+        senderId: userId,
+      });
+      socket.emit("fetchUserBlockList", { fetchUserBlockArray });
     });
 
     socket.on("removeUser", (userId) => {
       users.delete(userId);
     });
+
+    // socket.on(
+    //   "sendMessage",
+    //   async (senderId, receiverId, message, conversationId) => {
+    //     try {
+    //       // Middleware logic to check if the sender is blocked by the receiver
+    //       await checkBlockedUser(senderId, receiverId, (err) => {
+    //         if (err) {
+    //           console.log(err.message);
+    //           socket.emit("error", err.message);
+    //           return;
+    //         }
+
+    //         console.log("Total active users are: ", users);
+    //         const receiverUsers = getAllRecieverUser(receiverId);
+    //         const selfUsers = getAllSelf(senderId);
+    //         console.log("reciveUsers are: ", receiverUsers);
+    //         console.log("self users are: ", selfUsers);
+    //         if (receiverUsers) {
+    //           for (const receiver of receiverUsers) {
+    //             const receiverUserSocketId = receiver.socketId;
+    //             console.log(`emitting event to: ${receiverUserSocketId}`);
+    //             io.to(receiverUserSocketId).emit(
+    //               "getMessage",
+    //               message,
+    //               conversationId
+    //             );
+    //           }
+    //         }
+    //         for (const self of selfUsers) {
+    //           io.to(self.socketId).emit("getMessage", message, conversationId);
+    //         }
+    //       });
+    //     } catch (error) {
+    //       console.error("Error processing sendMessage event: ", error);
+    //     }
+    //   }
+    // );
 
     socket.on(
       "typing",
@@ -152,6 +206,7 @@ export function initSocket(io) {
           });
         } catch (error) {
           console.error("Error processing sendMessage event: ", error);
+          socket.emit("error", "An error occurred while sending the message.");
         }
       }
     );
@@ -219,6 +274,58 @@ export function initSocket(io) {
         });
       }
     );
+
+    socket.on("toggleBlock", async ({ senderId, receiverId }, cb) => {
+      const { success } = await toggleBlockUser({ senderId, receiverId });
+
+      const fetchedAllUsers = await fetchAllUsers();
+
+      const fetchUserBlockArray = await fetchUserBlockList({ senderId });
+
+      const getSingleUserDetails = await getSingleUser({
+        receiverId: senderId,
+      });
+
+      console.log(fetchUserBlockArray, "block list");
+      const receiverUsers = getAllRecieverUser(receiverId);
+      const selfUsers = getAllSelf(senderId);
+
+      if (receiverUsers) {
+        for (const receiver of receiverUsers) {
+          const receiverUserSocketId = receiver.socketId;
+          io.to(receiverUserSocketId).emit("getAllUsers", {
+            fetchedAllUsers: fetchedAllUsers,
+          });
+          io.to(receiverUserSocketId).emit("getSingleUser", {
+            getSingleUserDetails,
+          });
+        }
+      }
+      for (const self of selfUsers) {
+        io.to(self.socketId).emit("getAllUsers", { fetchedAllUsers });
+        io.to(self.socketId).emit("fetchUserBlockList", {
+          fetchUserBlockArray,
+        });
+      }
+      cb({
+        acknowledgement: {
+          success: true,
+        },
+      });
+    });
+
+    socket.on("singleUser", async ({ receiverId }, cb) => {
+      const getSingleUserDetails = await getSingleUser({ receiverId });
+      console.log(getSingleUserDetails, "single User");
+
+      socket.emit("getSingleUser", { getSingleUserDetails });
+
+      cb({
+        acknowledgement: {
+          success: true,
+        },
+      });
+    });
 
     socket.on("disconnect", () => {
       console.log(socket.id);
