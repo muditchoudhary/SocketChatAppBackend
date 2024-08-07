@@ -120,7 +120,7 @@ export function initSocket(io) {
       "sendMessage",
       async (senderId, receiverId, message, conversationId, callback) => {
         try {
-          // TODO ADD SNED MESSAGE HERE
+          console.log("users are: ", users);
           const updatedConversation = await addNewMessageToConversation({
             conversationId,
             senderId,
@@ -193,7 +193,7 @@ export function initSocket(io) {
         if (receiverUsers) {
           for (const receiver of receiverUsers) {
             const receiverUserSocketId = receiver.socketId;
-            console.log(`emitting event to: ${receiverUserSocketId}`);
+            // console.log(`emitting event to: ${receiverUserSocketId}`);
             io.to(receiverUserSocketId).emit(
               "getUpdateMessages",
               message,
@@ -237,7 +237,7 @@ export function initSocket(io) {
         receiverId: senderId,
       });
 
-      console.log(fetchUserBlockArray, "block list");
+      // console.log(fetchUserBlockArray, "block list");
       const receiverUsers = getAllRecieverUser(receiverId);
       const selfUsers = getAllSelf(senderId);
 
@@ -267,7 +267,7 @@ export function initSocket(io) {
 
     socket.on("singleUser", async ({ receiverId }, cb) => {
       const getSingleUserDetails = await getSingleUser({ receiverId });
-      console.log(getSingleUserDetails, "single User");
+      // console.log(getSingleUserDetails, "single User");
 
       socket.emit("getSingleUser", { getSingleUserDetails });
 
@@ -279,7 +279,6 @@ export function initSocket(io) {
     });
 
     socket.on("disconnect", () => {
-      console.log(socket.id);
       users.forEach((value, key, map) => {
         const user = value;
         if (user.socketId === socket.id) map.delete(socket.id);
@@ -289,8 +288,8 @@ export function initSocket(io) {
       //     usersObjArr.filter((user) => user.socketId !== socket.id)
       //   );
       // }
-      console.log(`A user has been disconnected`);
-      console.log("users left after disconnect: ", users);
+      // console.log(`A user has been disconnected`);
+      // console.log("users left after disconnect: ", users);
       const usersObject = getOnlineUsers();
       io.emit("getUsers", usersObject);
     });
