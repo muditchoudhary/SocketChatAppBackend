@@ -100,44 +100,6 @@ export function initSocket(io) {
       users.delete(userId);
     });
 
-    // socket.on(
-    //   "sendMessage",
-    //   async (senderId, receiverId, message, conversationId) => {
-    //     try {
-    //       // Middleware logic to check if the sender is blocked by the receiver
-    //       await checkBlockedUser(senderId, receiverId, (err) => {
-    //         if (err) {
-    //           console.log(err.message);
-    //           socket.emit("error", err.message);
-    //           return;
-    //         }
-
-    //         console.log("Total active users are: ", users);
-    //         const receiverUsers = getAllRecieverUser(receiverId);
-    //         const selfUsers = getAllSelf(senderId);
-    //         console.log("reciveUsers are: ", receiverUsers);
-    //         console.log("self users are: ", selfUsers);
-    //         if (receiverUsers) {
-    //           for (const receiver of receiverUsers) {
-    //             const receiverUserSocketId = receiver.socketId;
-    //             console.log(`emitting event to: ${receiverUserSocketId}`);
-    //             io.to(receiverUserSocketId).emit(
-    //               "getMessage",
-    //               message,
-    //               conversationId
-    //             );
-    //           }
-    //         }
-    //         for (const self of selfUsers) {
-    //           io.to(self.socketId).emit("getMessage", message, conversationId);
-    //         }
-    //       });
-    //     } catch (error) {
-    //       console.error("Error processing sendMessage event: ", error);
-    //     }
-    //   }
-    // );
-
     socket.on(
       "typing",
       ({ senderId, receiverId, currentConversationId, isTyping }) => {
@@ -158,49 +120,40 @@ export function initSocket(io) {
       "sendMessage",
       async (senderId, receiverId, message, conversationId, callback) => {
         try {
-          // Middleware logic to check if the sender is blocked by the receiver
-          await checkBlockedUser(senderId, receiverId, async (err) => {
-            if (err) {
-              console.log(err.message);
-              socket.emit("error", err.message);
-              return;
-            }
+          // TODO ADD SNED MESSAGE HERE
+          const updatedConversation = await addNewMessageToConversation({
+            conversationId,
+            senderId,
+            content: message,
+          });
+          const latestMessageObj =
+            updatedConversation.messages[
+              updatedConversation.messages.length - 1
+            ];
+          const receiverUsers = getAllRecieverUser(receiverId);
+          const selfUsers = getAllSelf(senderId);
 
-            // TODO ADD SNED MESSAGE HERE
-            const updatedConversation = await addNewMessageToConversation({
-              conversationId,
-              senderId,
-              content: message,
-            });
-            const latestMessageObj =
-              updatedConversation.messages[
-                updatedConversation.messages.length - 1
-              ];
-            const receiverUsers = getAllRecieverUser(receiverId);
-            const selfUsers = getAllSelf(senderId);
-
-            if (receiverUsers) {
-              for (const receiver of receiverUsers) {
-                const receiverUserSocketId = receiver.socketId;
-                io.to(receiverUserSocketId).emit(
-                  "getMessage",
-                  latestMessageObj,
-                  conversationId
-                );
-              }
-            }
-            for (const self of selfUsers) {
-              io.to(self.socketId).emit(
+          if (receiverUsers) {
+            for (const receiver of receiverUsers) {
+              const receiverUserSocketId = receiver.socketId;
+              io.to(receiverUserSocketId).emit(
                 "getMessage",
                 latestMessageObj,
                 conversationId
               );
             }
-            callback({
-              acknowledgement: {
-                success: true,
-              },
-            });
+          }
+          for (const self of selfUsers) {
+            io.to(self.socketId).emit(
+              "getMessage",
+              latestMessageObj,
+              conversationId
+            );
+          }
+          callback({
+            acknowledgement: {
+              success: true,
+            },
           });
         } catch (error) {
           console.error("Error processing sendMessage event: ", error);
