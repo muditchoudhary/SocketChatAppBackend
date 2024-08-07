@@ -142,8 +142,6 @@ export function initSocket(io) {
       "typing",
       ({ senderId, receiverId, currentConversationId, isTyping }) => {
         const receiverUsers = getAllRecieverUser(receiverId);
-        const selfUsers = getAllSelf(senderId);
-
         if (receiverUsers) {
           for (const receiver of receiverUsers) {
             const receiverUserSocketId = receiver.socketId;
